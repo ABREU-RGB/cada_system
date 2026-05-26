@@ -452,6 +452,22 @@ final class AtletasController extends Controller
 
         $v = Validator::make($data, $rules, $messages);
         $v->validate();
+
+        // 5. Validar que la edad del atleta cumpla con el rango de la categoría elegida
+        $categoriaId = !empty($data['categoria_id']) ? (int) $data['categoria_id'] : null;
+        if ($categoriaId) {
+            $categoria = (new Categoria())->find($categoriaId);
+            if ($categoria) {
+                $edadMin = (int) $categoria['edad_min'];
+                $edadMax = (int) $categoria['edad_max'];
+                if ($age < $edadMin || $age > $edadMax) {
+                    $v->setCustomError('categoria_id', "La edad del atleta ({$age} años) no corresponde a la categoría " . $categoria['nombre_categoria'] . " (requiere entre {$edadMin} y {$edadMax} años).");
+                }
+            } else {
+                $v->setCustomError('categoria_id', 'La categoría seleccionada no es válida.');
+            }
+        }
+
         return $v;
     }
 }
