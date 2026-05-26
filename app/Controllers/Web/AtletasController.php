@@ -389,32 +389,39 @@ final class AtletasController extends Controller
             $rules['telefono'] = ["regex:$telRegex"];
         }
 
-        // 3. Datos del representante obligatorios si es menor de edad OR si se edita desde el modal de representante
-        $tieneRepresentanteEnPost = ($ignoreId !== null) && isset($_POST['tutor_nombres']);
-        if ($age < 18 || $tieneRepresentanteEnPost) {
-            $esEdicionBasico = ($ignoreId !== null) && isset($_POST['nombre']) && !isset($_POST['tutor_nombres']);
-            $tutorVacio = empty($data['tutor_nombres']) 
-                || $data['tutor_nombres'] === 'Sin Nombre' 
-                || empty($data['tutor_cedula']) 
-                || $data['tutor_cedula'] === 'S/N' 
-                || empty($data['tutor_telefono']);
+        // 3. Datos del representante
+        $editandoRepresentante = ($ignoreId === null) || isset($_POST['tutor_nombres']);
+        $tutorVacio = empty($data['tutor_nombres']) 
+            || $data['tutor_nombres'] === 'Sin Nombre' 
+            || empty($data['tutor_cedula']) 
+            || $data['tutor_cedula'] === 'S/N' 
+            || empty($data['tutor_telefono']);
 
-            if ($esEdicionBasico && $tutorVacio && $age < 18) {
-                $rules['tutor_representante'] = 'required';
-            } else {
+        if ($editandoRepresentante) {
+            if ($age < 18) {
                 $rules['tutor_nombres'] = 'required|min:2|max:100';
                 $rules['tutor_apellidos'] = 'required|min:2|max:100';
                 $rules['tutor_cedula'] = ['required', "regex:$cedRegex"];
                 $rules['tutor_telefono'] = ['required', "regex:$telRegex"];
                 $rules['tutor_relacion'] = 'required';
+            } else {
+                // Si es mayor de edad, el representante es opcional. Pero si se llenaron datos, validamos su formato
+                if (!$tutorVacio) {
+                    $rules['tutor_nombres'] = 'min:2|max:100';
+                    $rules['tutor_apellidos'] = 'min:2|max:100';
+                    if (!empty($data['tutor_cedula']) && $data['tutor_cedula'] !== 'S/N') {
+                        $rules['tutor_cedula'] = ["regex:$cedRegex"];
+                    }
+                    if (!empty($data['tutor_telefono']) && $data['tutor_telefono'] !== '') {
+                        $rules['tutor_telefono'] = ["regex:$telRegex"];
+                    }
+                    $rules['tutor_relacion'] = 'required';
+                }
             }
         } else {
-            // Si es mayor de edad y no se envía el modal de representante, es opcional pero se valida formato si existe
-            if (!empty($data['tutor_cedula'])) {
-                $rules['tutor_cedula'] = ["regex:$cedRegex"];
-            }
-            if (!empty($data['tutor_telefono'])) {
-                $rules['tutor_telefono'] = ["regex:$telRegex"];
+            // Si no se está editando el representante (ej. se editan Datos Básicos o Dirección)
+            if ($age < 18 && $tutorVacio) {
+                $rules['tutor_representante'] = 'required';
             }
         }
 
